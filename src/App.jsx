@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 
 // Common
 import Landing from './Screens/common/Landing';
@@ -17,52 +18,106 @@ import ModLobby from './Screens/moderators/ModLobby';
 import ModGameplay from './Screens/moderators/ModGameplay';
 
 export default function App() {
-  const [view, setView] = useState('landing'); 
+  // We use the hook to handle the "Exit Demo" button logic
+  const navigate = useNavigate(); 
 
-  const renderView = () => {
-    switch(view) {
-      // User Flow
-      case 'landing': return <Landing onSelect={(type) => setView(type === 'user' ? 'user_passcode' : 'mod_login')} />;
-      case 'user_passcode': return <UserPasscode onNext={() => setView('user_waiting')} />;
-      case 'user_waiting': return <UserLobby stage="waiting" onNext={() => setView('user_get_questions')} />;
-      case 'user_get_questions': return <UserLobby stage="get_questions" onNext={() => setView('user_ready')} />;
-      case 'user_ready': return <UserLobby stage="ready" onNext={() => setView('user_quiz')} />;
-      case 'user_quiz': return <UserQuiz onNext={() => setView('user_waiting_results')} />;
-      case 'user_waiting_results': return <UserResults status="waiting" onNext={() => setView('user_qualified')} />; 
-      case 'user_qualified': return <UserResults status="qualified" onNext={() => setView('user_waiting')} />;
-      case 'user_disqualified': return <UserResults status="disqualified" onReset={() => setView('landing')} />;
-
-      // Moderator Flow
-      case 'mod_login': return <ModAuth onLogin={() => setView('mod_dashboard')} />;
-      case 'mod_dashboard': return <ModDashboard onNavigate={(dest) => setView(dest === 'register' ? 'mod_register' : 'mod_existing')} />;
-      
-      // Setup Flow
-      case 'mod_register': return <ModSetup step="register" onNext={() => setView('mod_settings')} />;
-      case 'mod_settings': return <ModSetup step="settings" onNext={() => setView('mod_participants')} />;
-      case 'mod_participants': return <ModSetup step="participants" onNext={() => setView('mod_waiting')} />;
-      case 'mod_existing': return <ModSetup step="participants" onNext={() => setView('mod_waiting')} />; 
-
-      // Lobby & Gameplay
-      case 'mod_waiting': return <ModLobby mode="waiting" onNext={() => setView('mod_gen_questions')} />;
-      case 'mod_gen_questions': return <ModLobby mode="generating" onNext={() => setView('mod_quiz')} />;
-      case 'mod_quiz': return <ModGameplay mode="live" onNext={() => setView('mod_correction')} />;
-      case 'mod_correction': return <ModGameplay mode="correction" onNext={() => setView('mod_results')} />;
-      case 'mod_results': return <ModGameplay mode="results" onNext={() => setView('mod_waiting')} />; 
-
-      default: return <Landing onSelect={(type) => setView(type === 'user' ? 'user_passcode' : 'mod_login')} />;
-    }
-  };
+  // This helper function replaces your old renderView logic.
+  // It allows us to render the "Exit Demo" button on every page EXCEPT Landing.
+  const Layout = ({ children }) => (
+    <>
+      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 50 }}>
+        <button 
+            onClick={() => navigate('/')} 
+            style={{ background: '#1f2937', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', opacity: 0.5, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} 
+            onMouseOver={e => e.currentTarget.style.opacity = 1} 
+            onMouseOut={e => e.currentTarget.style.opacity = 0.5}
+        >
+            EXIT DEMO
+        </button>
+      </div>
+      {children}
+    </>
+  );
 
   return (
     <div className="font-sans">
-        {view !== 'landing' && (
-            <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 50 }}>
-                <button onClick={() => setView('landing')} style={{ background: '#1f2937', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', opacity: 0.5, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} onMouseOver={e => e.currentTarget.style.opacity = 1} onMouseOut={e => e.currentTarget.style.opacity = 0.5}>
-                    EXIT DEMO
-                </button>
-            </div>
-        )}
-        {renderView()}
+      <Routes>
+        {/* --- Landing --- */}
+        <Route path="/" element={
+            <Landing onSelect={(type) => navigate(type === 'user' ? '/user/passcode' : '/mod/login')} />
+        } />
+
+        {/* --- User Flow --- */}
+        <Route path="/user/passcode" element={
+            <Layout><UserPasscode onNext={() => navigate('/user/waiting')} /></Layout>
+        } />
+        <Route path="/user/waiting" element={
+            <Layout><UserLobby stage="waiting" onNext={() => navigate('/user/get_questions')} /></Layout>
+        } />
+        <Route path="/user/get_questions" element={
+            <Layout><UserLobby stage="get_questions" onNext={() => navigate('/user/ready')} /></Layout>
+        } />
+        <Route path="/user/ready" element={
+            <Layout><UserLobby stage="ready" onNext={() => navigate('/user/quiz')} /></Layout>
+        } />
+        <Route path="/user/quiz" element={
+            <Layout><UserQuiz onNext={() => navigate('/user/waiting_results')} /></Layout>
+        } />
+        <Route path="/user/waiting_results" element={
+            <Layout><UserResults status="waiting" onNext={() => navigate('/user/qualified')} /></Layout>
+        } />
+        <Route path="/user/qualified" element={
+            <Layout><UserResults status="qualified" onNext={() => navigate('/user/waiting')} /></Layout>
+        } />
+        <Route path="/user/disqualified" element={
+            <Layout><UserResults status="disqualified" onReset={() => navigate('/')} /></Layout>
+        } />
+
+        {/* --- Moderator Flow --- */}
+        <Route path="/mod/login" element={
+            // ModAuth handles its own navigation internally now, so we don't need onLogin here
+            <Layout><ModAuth /></Layout>
+        } />
+        
+        {/* This matches the URL you set in ModAuth.jsx */}
+        <Route path="/modDashboard" element={
+            <Layout><ModDashboard onNavigate={(dest) => navigate(dest === 'register' ? '/mod/register' : '/mod/existing')} /></Layout>
+        } />
+
+        {/* --- Setup Flow --- */}
+        <Route path="/mod/register" element={
+            <Layout><ModSetup step="register" onNext={() => navigate('/mod/settings')} /></Layout>
+        } />
+        <Route path="/mod/existing" element={
+            <Layout><ModSetup step="participants" onNext={() => navigate('/mod/waiting')} /></Layout>
+        } />
+        <Route path="/mod/settings" element={
+            <Layout><ModSetup step="settings" onNext={() => navigate('/mod/participants')} /></Layout>
+        } />
+        <Route path="/mod/participants" element={
+            <Layout><ModSetup step="participants" onNext={() => navigate('/mod/waiting')} /></Layout>
+        } />
+
+        {/* --- Lobby & Gameplay --- */}
+        <Route path="/mod/waiting" element={
+            <Layout><ModLobby mode="waiting" onNext={() => navigate('/mod/gen_questions')} /></Layout>
+        } />
+        <Route path="/mod/gen_questions" element={
+            <Layout><ModLobby mode="generating" onNext={() => navigate('/mod/quiz')} /></Layout>
+        } />
+        <Route path="/mod/quiz" element={
+            <Layout><ModGameplay mode="live" onNext={() => navigate('/mod/correction')} /></Layout>
+        } />
+        <Route path="/mod/correction" element={
+            <Layout><ModGameplay mode="correction" onNext={() => navigate('/mod/results')} /></Layout>
+        } />
+        <Route path="/mod/results" element={
+            <Layout><ModGameplay mode="results" onNext={() => navigate('/mod/waiting')} /></Layout>
+        } />
+
+        {/* Fallback for 404s */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
