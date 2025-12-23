@@ -32,6 +32,8 @@ const ModAuth = () => {
 
       if (response.ok) {
         // Optional: Store token or user data if your backend returns it
+        console.log("Login Success! Token received:", data.token); // <--- Debugging
+        localStorage.setItem('token', data.token);
         // localStorage.setItem('user', JSON.stringify(data));
         navigateTo('/modDashboard'); // Note: Added '/' to ensure it goes to the correct route
       } else {

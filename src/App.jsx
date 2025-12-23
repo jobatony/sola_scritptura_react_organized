@@ -18,11 +18,8 @@ import ModLobby from './Screens/moderators/ModLobby';
 import ModGameplay from './Screens/moderators/ModGameplay';
 
 export default function App() {
-  // We use the hook to handle the "Exit Demo" button logic
   const navigate = useNavigate(); 
 
-  // This helper function replaces your old renderView logic.
-  // It allows us to render the "Exit Demo" button on every page EXCEPT Landing.
   const Layout = ({ children }) => (
     <>
       <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 50 }}>
@@ -47,7 +44,7 @@ export default function App() {
             <Landing onSelect={(type) => navigate(type === 'user' ? '/user/passcode' : '/mod/login')} />
         } />
 
-        {/* --- User Flow --- */}
+        {/* --- User Flow (Still uses onNext props) --- */}
         <Route path="/user/passcode" element={
             <Layout><UserPasscode onNext={() => navigate('/user/waiting')} /></Layout>
         } />
@@ -75,30 +72,30 @@ export default function App() {
 
         {/* --- Moderator Flow --- */}
         <Route path="/mod/login" element={
-            // ModAuth handles its own navigation internally now, so we don't need onLogin here
             <Layout><ModAuth /></Layout>
         } />
         
-        {/* This matches the URL you set in ModAuth.jsx */}
+        {/* CHANGE 1: Removed onNavigate prop (ModDashboard handles it internally now) */}
         <Route path="/modDashboard" element={
-            <Layout><ModDashboard onNavigate={(dest) => navigate(dest === 'register' ? '/mod/register' : '/mod/existing')} /></Layout>
+            <Layout><ModDashboard /></Layout>
         } />
 
         {/* --- Setup Flow --- */}
+        {/* CHANGE 2: Removed onNext props (ModSetup handles it internally now) */}
         <Route path="/mod/register" element={
-            <Layout><ModSetup step="register" onNext={() => navigate('/mod/settings')} /></Layout>
+            <Layout><ModSetup step="register" /></Layout>
         } />
         <Route path="/mod/existing" element={
-            <Layout><ModSetup step="participants" onNext={() => navigate('/mod/waiting')} /></Layout>
+            <Layout><ModSetup step="participants" /></Layout>
         } />
         <Route path="/mod/settings" element={
-            <Layout><ModSetup step="settings" onNext={() => navigate('/mod/participants')} /></Layout>
+            <Layout><ModSetup step="settings" /></Layout>
         } />
         <Route path="/mod/participants" element={
-            <Layout><ModSetup step="participants" onNext={() => navigate('/mod/waiting')} /></Layout>
+            <Layout><ModSetup step="participants" /></Layout>
         } />
 
-        {/* --- Lobby & Gameplay --- */}
+        {/* --- Lobby & Gameplay (These still use onNext until you update them) --- */}
         <Route path="/mod/waiting" element={
             <Layout><ModLobby mode="waiting" onNext={() => navigate('/mod/gen_questions')} /></Layout>
         } />
@@ -115,7 +112,7 @@ export default function App() {
             <Layout><ModGameplay mode="results" onNext={() => navigate('/mod/waiting')} /></Layout>
         } />
 
-        {/* Fallback for 404s */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
