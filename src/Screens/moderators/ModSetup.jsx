@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import Hook
 import { ChevronRight, Send, Play, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { useWebSocket } from '../../Context/WebSocketContext';
 import ScreenWrapper from '../../Components/Screenwrapper';
 import Card from '../../Components/Card';
 import Button from '../../Components/Button';
 
 const ModSetup = ({ step }) => {
   const navigate = useNavigate();
+  const { connect } = useWebSocket();
   const [loading, setLoading] = useState(false);
 
   // --- STEP 1: REGISTER ---
@@ -275,6 +277,7 @@ const ModSetup = ({ step }) => {
   
   useEffect(() => {
     if (step === 'participants') {
+
         const fetchData = async () => {
             const compId = localStorage.getItem('current_competition_id');
             const token = localStorage.getItem('token');
@@ -303,6 +306,17 @@ const ModSetup = ({ step }) => {
   }, [step]);
   
   if (step === 'participants') {
+
+    const handleProceed = () => {
+            const compId = localStorage.getItem('current_competition_id');
+            
+            // A. Open the connection
+            connect(compId); 
+            
+            // B. Navigate to the Lobby
+            navigate('/mod/waiting'); 
+        };
+
     return (
       <ScreenWrapper>
         <Card>
@@ -365,7 +379,7 @@ const ModSetup = ({ step }) => {
 
           <div className="flex justify-end">
             {/* Next Button goes to Waiting Room */}
-            <Button onClick={() => navigate('/mod/waiting')}>
+            <Button onClick={handleProceed}>
               Proceed to Gameplay <Play size={16} className="ml-2" />
             </Button>
           </div>
