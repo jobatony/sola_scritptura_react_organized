@@ -40,7 +40,7 @@ const ModLobby = ({ onNext }) => {
                 }
                 
                 // Connect WebSocket
-                connect(compId);
+                connect(compId, 'moderator');
                 
             } catch (err) {
                 console.error("Error loading participants:", err);

@@ -8,28 +8,26 @@ export const WebSocketProvider = ({ children }) => {
     const [isConnected, setIsConnected] = useState(false);
     const [lastMessage, setLastMessage] = useState(null);
 
-    const connect = (competitionId) => {
-        // Prevent multiple connections
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) return;
+    const connect = (competitionId, forcedRole = null) => { 
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) return;
 
-        // 1. Retrieve BOTH credentials
-        const token = localStorage.getItem('token');
-        const pCode = localStorage.getItem('participant_code'); // <--- ADD THIS LINE
-        const userRole = localStorage.getItem('user_role'); // <--- CHECK THE ROLE
+    const token = localStorage.getItem('token');
+    const pCode = localStorage.getItem('participant_code');
+    
+    // Use the forcedRole if provided, otherwise fallback to storage
+    const activeRole = forcedRole || localStorage.getItem('user_role');
 
+    let wsUrl = `ws://localhost:8000/ws/competition/${competitionId}/`;
 
-        let wsUrl = `ws://localhost:8000/ws/competition/${competitionId}/`;
-
-        // LOGIC: If I am explicitly a participant, USE THE CODE. 
-        // Otherwise, default to token (Moderator).
-        if (userRole === 'participant' && pCode) {
-            wsUrl += `?code=${pCode}`;
-        } else if (token) {
-            wsUrl += `?token=${token}`;
-        } else {
-             console.error("No credentials found! Cannot connect.");
-             return;
-        }
+    // LOGIC: Now we check the ACTIVE role (which you can force)
+    if (activeRole === 'participant' && pCode) {
+        wsUrl += `?code=${pCode}`;
+    } else if (token) {
+        wsUrl += `?token=${token}`;
+    } else {
+         console.error("No credentials found! Cannot connect.");
+         return;
+    }
 
         const ws = new WebSocket(wsUrl);
 

@@ -17,7 +17,7 @@ const UserLobby = () => {
   // 1. Connect on Mount
   useEffect(() => {
     const compId = localStorage.getItem('current_competition_id');
-    if (compId) connect(compId);
+    if (compId) connect(compId, 'participant');
   }, []);
 
   // 2. WEBSOCKET LISTENER (The Brain)
