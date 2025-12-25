@@ -148,7 +148,7 @@ const handleStartGame = () => {
 
     // 2. Navigate the Moderator (Triggers Mod Screen)
     // Ensure you pass the 'questions' data so ModGameplay doesn't crash
-    navigate('/mod/gameplay', { 
+    navigate('/mod/quiz', { 
         state: { 
             questions: questions, // Ensure this variable exists in ModLobby
             competitionId: finalId,

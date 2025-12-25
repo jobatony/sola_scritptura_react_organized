@@ -46,7 +46,7 @@ const UserLobby = () => {
         : JSON.parse(localStorage.getItem('quiz_questions'));
 
       // ACTUAL NAVIGATION HAPPENS HERE
-      navigate('/quiz', { state: { questions: questionsToPass } });
+      navigate('user/quiz', { state: { questions: questionsToPass } });
     }
 
   }, [lastMessage]);
