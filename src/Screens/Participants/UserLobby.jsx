@@ -9,7 +9,7 @@ import Button from '../../Components/Button';
 
 const UserLobby = () => {
   const [internalStage, setInternalStage] = useState('waiting'); // 'waiting' | 'get_questions' | 'ready' | 'locked_in'
-  const [questions, setQuestions] = useState([]); // Store questions temporarily
+  const [gameData, setGameData] = useState(null);
   
   const navigate = useNavigate();
   const { connect, isConnected, lastMessage, sendMessage } = useWebSocket(); // Ensure sendMessage is exposed from your Context
@@ -31,8 +31,8 @@ const UserLobby = () => {
       console.log("Questions received:", lastMessage.payload);
       
       // Save data immediately
-      setQuestions(lastMessage.payload);
-      localStorage.setItem('quiz_questions', JSON.stringify(lastMessage.payload));
+      setGameData(lastMessage.payload);
+      localStorage.setItem('quiz_game_data', JSON.stringify(lastMessage.payload));
       
       // Update UI to let user "Get" them
       setInternalStage('get_questions');
@@ -40,18 +40,21 @@ const UserLobby = () => {
 
     // EVENT B: Moderator triggers the actual start (Step 3 - The "GO" signal)
     if (lastMessage.type === 'start_round_trigger') {
-      console.log("Moderator started the round! Navigating...");
+      console.log("Moderator started the round!");
       
-      // Grab questions from state or fallback to storage
-      const questionsToPass = questions.length > 0 
-        ? questions 
-        : JSON.parse(localStorage.getItem('quiz_questions'));
+      // Retrieve data from state or storage
+      const dataToPass = gameData || JSON.parse(localStorage.getItem('quiz_game_data'));
 
-      // ACTUAL NAVIGATION HAPPENS HERE
-      navigate('/user/quiz', { state: { questions: questionsToPass } });
-    }
-
-  }, [lastMessage]);
+      if (dataToPass && dataToPass.questions) {
+          // PASS BOTH ROUND AND QUESTIONS
+          navigate('/user/quiz', { 
+              state: { 
+                  questions: dataToPass.questions, 
+                  round: dataToPass.round 
+              } 
+          });
+      }
+    }}, [lastMessage]);
 
   // 3. HANDLER: User clicks "I'm Ready"
   const handleUserReady = () => {

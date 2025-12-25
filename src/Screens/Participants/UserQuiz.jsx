@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+// jobatony/sola_scritptura_react_organized/src/Screens/Participants/UserQuiz.jsx
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ScreenWrapper from '../../Components/Screenwrapper';
 import Card from '../../Components/Card';
@@ -8,23 +10,33 @@ const UserQuiz = () => {
     const location = useLocation();
     const navigate = useNavigate();
     
-    // 1. Get Questions from Navigation State
+    // 1. Get Questions and Round from Navigation State
     const questions = location.state?.questions || [];
+    const roundNumber = location.state?.round || 1; // Default to 1 if missing
+
     const [currentIndex, setCurrentIndex] = useState(0);
     
     // 2. Timer State
     const [timeLeft, setTimeLeft] = useState(10);
-    const [isAnswered, setIsAnswered] = useState(false); // Lock selection
+    const [isAnswered, setIsAnswered] = useState(false); 
     
     // 3. Data Collection
-    const answersRef = useRef([]); // Store results without re-rendering
+    const answersRef = useRef([]); 
     const timerRef = useRef(null);
 
     const currentQuestion = questions[currentIndex];
 
+    // Shuffle options only when the current question changes
+    const shuffledOptions = useMemo(() => {
+        if (!currentQuestion) return [];
+        // The backend sends 'options' as an array [wrong1, wrong2, wrong3, correct]
+        // We must shuffle them so the answer isn't always the last one.
+        return [...currentQuestion.options].sort(() => Math.random() - 0.5);
+    }, [currentQuestion]);
+
     // --- A. TIMER LOGIC ---
     useEffect(() => {
-        if (currentIndex >= questions.length) return;
+        if (!currentQuestion) return;
 
         setTimeLeft(10);
         setIsAnswered(false);
@@ -32,6 +44,7 @@ const UserQuiz = () => {
         timerRef.current = setInterval(() => {
             setTimeLeft((prev) => {
                 if (prev <= 1) {
+                    // Time is fully up
                     handleTimeUp();
                     return 0;
                 }
@@ -42,36 +55,35 @@ const UserQuiz = () => {
         return () => clearInterval(timerRef.current);
     }, [currentIndex]);
 
-    // --- B. HANDLE TIME UP (Auto Advance) ---
+    // --- B. HANDLE TIME UP ---
     const handleTimeUp = () => {
         clearInterval(timerRef.current);
-        
-        // Record 'No Answer' if they didn't pick one
         if (!isAnswered) {
-            recordAnswer(null, 10);
+            recordAnswer(null, 10); // Null answer implies timeout
         }
-        
         moveToNext();
     };
 
     // --- C. HANDLE USER SELECTION ---
     const handleOptionClick = (option) => {
-        if (isAnswered) return; // Prevent changing answer
+        if (isAnswered) return; 
         
         clearInterval(timerRef.current);
         setIsAnswered(true);
         
-        const timeTaken = 10 - timeLeft;
+        const timeTaken = 10 - timeLeft; // Calculate time spent
         recordAnswer(option, timeTaken);
         
-        // Optional: Small delay before next question so they see what they clicked
-        setTimeout(moveToNext, 500); 
+        // Immediate transition requested? 
+        // If you want ZERO delay, call moveToNext() directly. 
+        // A small delay (300ms) is usually better for UX to register the click.
+        setTimeout(moveToNext, 300); 
     };
 
     const recordAnswer = (answer, time) => {
         answersRef.current.push({
             question_id: currentQuestion.id,
-            selected_answer: answer, // e.g., "Genesis" or null
+            selected_answer: answer, 
             time_taken: time
         });
     };
@@ -89,12 +101,13 @@ const UserQuiz = () => {
     const submitResults = async () => {
         const compId = localStorage.getItem('current_competition_id');
         const pCode = localStorage.getItem('participant_code');
-        const token = localStorage.getItem('token');
+        // Token auth if required
+        // const token = localStorage.getItem('token'); 
 
         const payload = {
             competition_id: compId,
             participant_code: pCode,
-            round_number: 1, // You might want to pass this dynamically too
+            round_number: roundNumber, // Use the dynamic round number
             answers: answersRef.current
         };
 
@@ -103,11 +116,10 @@ const UserQuiz = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${token}`
+                    // 'Authorization': `Token ${token}` // Uncomment if using tokens
                 },
                 body: JSON.stringify(payload)
             });
-            // Navigate to waiting screen
             navigate('/user/waiting-results'); 
         } catch (error) {
             console.error("Submission failed", error);
@@ -115,14 +127,6 @@ const UserQuiz = () => {
     };
 
     if (!currentQuestion) return <div>Loading Quiz...</div>;
-
-    // Combine options: correct + wrongs (You should shuffle these ideally)
-    const options = [
-        currentQuestion.correct_book, 
-        currentQuestion.wrong_option_1, 
-        currentQuestion.wrong_option_2, 
-        currentQuestion.wrong_option_3
-    ].sort(() => Math.random() - 0.5);
 
     return (
         <ScreenWrapper>
@@ -134,12 +138,13 @@ const UserQuiz = () => {
                     </span>
                 </div>
 
+                {/* NOTE: Backend sends 'text', not 'verse_text' */}
                 <h3 style={{ minHeight: '80px', fontSize: '1.2rem' }}>
-                    {currentQuestion.verse_text}
+                    {currentQuestion.text} 
                 </h3>
 
                 <div className="grid-2" style={{ gap: '12px', marginTop: '20px' }}>
-                    {options.map((opt, idx) => (
+                    {shuffledOptions.map((opt, idx) => (
                         <Button
                             key={idx}
                             variant="outline"
@@ -158,6 +163,6 @@ const UserQuiz = () => {
             </Card>
         </ScreenWrapper>
     );
-};
+}
 
 export default UserQuiz;
