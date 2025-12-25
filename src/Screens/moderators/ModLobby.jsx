@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Users } from 'lucide-react';
 import { useWebSocket } from '../../Context/WebSocketContext';
 import ScreenWrapper from '../../Components/Screenwrapper';
@@ -6,11 +7,14 @@ import Card from '../../Components/Card';
 import Button from '../../Components/Button';
 
 const ModLobby = ({ onNext }) => {
+
+    const navigate = useNavigate();
     // 1. Data State
     const [allParticipants, setAllParticipants] = useState([]);
     const [onlineCodes, setOnlineCodes] = useState(new Set());
     const [readyCodes, setReadyCodes] = useState(new Set()); // New: Track who is ready
-    
+    const [questions, setQuestions] = useState([]);
+    const { competitionId } = useParams();
     // 2. UI State
     const [mode, setMode] = useState('lobby'); // 'lobby' | 'generating'
     const [step, setStep] = useState(0); // 0=Spin, 1=Disperse, 2=ReadyMonitor
@@ -78,7 +82,10 @@ const ModLobby = ({ onNext }) => {
         setMode('generating');
         const token = localStorage.getItem('token');
         console.log({token})
-        const compId = localStorage.getItem('current_competition_id');
+        console.log("Starting game for ID:", competitionId);
+
+        const finalId = competitionId || localStorage.getItem('current_competition_id');
+
         
         if (!token) {
         alert("You are not logged in! (No token found)");
@@ -102,7 +109,22 @@ const ModLobby = ({ onNext }) => {
                 setStep(0); // Generating...
                 setTimeout(() => setStep(1), 1500); // Dispersing...
                 setTimeout(() => setStep(2), 4000); // Monitoring Readiness
+
+                const data = await response.json();
+            
+                console.log("Questions Generated:", data);
+                
+                // 👇 ADD THIS LINE to save the questions
+                setQuestions(data.questions); 
+                
+                alert("Questions distributed successfully!");
+
+                setCurrentRound(data.round); 
+
+                console.log("Round generated:", data.round);
+                alert(`Round ${data.round} generated!`);
             }
+            
         } catch (err) {
             console.error("Generation failed", err);
             setMode('lobby'); // Revert on error
@@ -110,12 +132,27 @@ const ModLobby = ({ onNext }) => {
     };
 
     // Action 2: Start The Round (Trigger Navigation)
-    const handleStartGame = () => {
-        sendMessage({ 
-            type: 'start_round_trigger' // This tells backend to send 'start_round' to everyone
-        });
-        onNext(); // Move Mod to Live View
-    };
+    // In ModLobby.jsx
+
+const handleStartGame = () => {
+    // 1. Send the WebSocket Signal (Triggers Users)
+    sendMessage({
+        type: 'start_round', // <--- CRITICAL: Must match UserLobby
+        payload: { 
+            round: currentRound
+        }
+    });
+
+    // 2. Navigate the Moderator (Triggers Mod Screen)
+    // Ensure you pass the 'questions' data so ModGameplay doesn't crash
+    navigate('/mod/gameplay', { 
+        state: { 
+            questions: questions, // Ensure this variable exists in ModLobby
+            competitionId: finalId,
+            round: currentRound 
+        } 
+    });
+};
 
     // Computed Checks
     const allJoined = allParticipants.length > 0 && allParticipants.every(p => onlineCodes.has(p.access_code));
