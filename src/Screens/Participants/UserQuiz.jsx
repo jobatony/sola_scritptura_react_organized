@@ -10,74 +10,71 @@ const UserQuiz = () => {
     const location = useLocation();
     const navigate = useNavigate();
     
-    // 1. Get Questions and Round from Navigation State
+    // Get Questions and Round from Navigation State
     const questions = location.state?.questions || [];
-    const roundNumber = location.state?.round || 1; // Default to 1 if missing
+    const roundNumber = location.state?.round || 1; 
 
     const [currentIndex, setCurrentIndex] = useState(0);
-    
-    // 2. Timer State
     const [timeLeft, setTimeLeft] = useState(10);
     const [isAnswered, setIsAnswered] = useState(false); 
     
-    // 3. Data Collection
     const answersRef = useRef([]); 
     const timerRef = useRef(null);
 
     const currentQuestion = questions[currentIndex];
 
-    // Shuffle options only when the current question changes
+    // Shuffle options when the current question changes
     const shuffledOptions = useMemo(() => {
-        if (!currentQuestion) return [];
-        // The backend sends 'options' as an array [wrong1, wrong2, wrong3, correct]
-        // We must shuffle them so the answer isn't always the last one.
+        if (!currentQuestion || !currentQuestion.options) return [];
         return [...currentQuestion.options].sort(() => Math.random() - 0.5);
     }, [currentQuestion]);
 
-    // --- A. TIMER LOGIC ---
+    // --- A. TIMER SETUP ---
     useEffect(() => {
         if (!currentQuestion) return;
 
+        // Reset state for the new question
         setTimeLeft(10);
         setIsAnswered(false);
 
+        // Start the timer
         timerRef.current = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    // Time is fully up
-                    handleTimeUp();
-                    return 0;
-                }
-                return prev - 1;
-            });
+            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
         }, 1000);
 
+        // Cleanup interval on unmount or when moving to next question
         return () => clearInterval(timerRef.current);
-    }, [currentIndex]);
+    }, [currentIndex, currentQuestion]); // Re-run only when index changes
 
-    // --- B. HANDLE TIME UP ---
+    // --- B. MONITOR TIME UP ---
+    // This separate effect handles the "Time Up" logic safely
+    useEffect(() => {
+        if (timeLeft === 0 && !isAnswered) {
+            handleTimeUp();
+        }
+    }, [timeLeft, isAnswered]);
+
+    // --- C. HANDLERS ---
     const handleTimeUp = () => {
         clearInterval(timerRef.current);
+        // Only record if we haven't already answered
         if (!isAnswered) {
             recordAnswer(null, 10); // Null answer implies timeout
+            moveToNext();
         }
-        moveToNext();
     };
 
-    // --- C. HANDLE USER SELECTION ---
     const handleOptionClick = (option) => {
-        if (isAnswered) return; 
+        if (isAnswered) return; // Prevent double clicking
         
-        clearInterval(timerRef.current);
-        setIsAnswered(true);
+        setIsAnswered(true); // Lock the answer immediately
+        clearInterval(timerRef.current); // Stop timer
         
-        const timeTaken = 10 - timeLeft; // Calculate time spent
+        const timeTaken = 10 - timeLeft; 
         recordAnswer(option, timeTaken);
         
-        // Immediate transition requested? 
-        // If you want ZERO delay, call moveToNext() directly. 
-        // A small delay (300ms) is usually better for UX to register the click.
-        setTimeout(moveToNext, 300); 
+        // Short delay for UX, then move
+        setTimeout(moveToNext, 500); 
     };
 
     const recordAnswer = (answer, time) => {
@@ -88,7 +85,6 @@ const UserQuiz = () => {
         });
     };
 
-    // --- D. NEXT QUESTION / FINISH ---
     const moveToNext = () => {
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(prev => prev + 1);
@@ -97,17 +93,14 @@ const UserQuiz = () => {
         }
     };
 
-    // --- E. SUBMIT TO BACKEND ---
     const submitResults = async () => {
         const compId = localStorage.getItem('current_competition_id');
         const pCode = localStorage.getItem('participant_code');
-        // Token auth if required
-        // const token = localStorage.getItem('token'); 
 
         const payload = {
             competition_id: compId,
             participant_code: pCode,
-            round_number: roundNumber, // Use the dynamic round number
+            round_number: roundNumber,
             answers: answersRef.current
         };
 
@@ -116,7 +109,6 @@ const UserQuiz = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    // 'Authorization': `Token ${token}` // Uncomment if using tokens
                 },
                 body: JSON.stringify(payload)
             });
@@ -126,7 +118,19 @@ const UserQuiz = () => {
         }
     };
 
-    if (!currentQuestion) return <div>Loading Quiz...</div>;
+    // Prevent crashing if questions are empty or loading
+    if (!currentQuestion) {
+        return (
+            <ScreenWrapper>
+                <Card>
+                    <div className="text-center">
+                        <h2>Loading Quiz...</h2>
+                        <p>Setting up your questions.</p>
+                    </div>
+                </Card>
+            </ScreenWrapper>
+        );
+    }
 
     return (
         <ScreenWrapper>
@@ -138,8 +142,7 @@ const UserQuiz = () => {
                     </span>
                 </div>
 
-                {/* NOTE: Backend sends 'text', not 'verse_text' */}
-                <h3 style={{ minHeight: '80px', fontSize: '1.2rem' }}>
+                <h3 style={{ minHeight: '80px', fontSize: '1.2rem', marginBottom: '20px' }}>
                     {currentQuestion.text} 
                 </h3>
 
@@ -153,7 +156,11 @@ const UserQuiz = () => {
                             style={{ 
                                 width: '100%', 
                                 padding: '15px',
-                                backgroundColor: isAnswered ? '#e5e7eb' : 'white'
+                                // Ensure text is visible (black) and background changes on answer
+                                color: isAnswered ? '#666' : 'black', 
+                                borderColor: '#ccc',
+                                backgroundColor: isAnswered ? '#e5e7eb' : 'white',
+                                cursor: isAnswered ? 'not-allowed' : 'pointer'
                             }}
                         >
                             {opt}
