@@ -139,22 +139,24 @@ const handleStartGame = () => {
 
     const finalId = competitionId || localStorage.getItem('current_competition_id');
     // 1. Send the WebSocket Signal (Triggers Users)
-    sendMessage({
+    const isSent = sendMessage({
         type: 'start_round', // <--- CRITICAL: Must match UserLobby
         payload: { 
             round: currentRound
         }
     });
-
+    console.log("Start Round message sent:", isSent);
     // 2. Navigate the Moderator (Triggers Mod Screen)
     // Ensure you pass the 'questions' data so ModGameplay doesn't crash
-    navigate('/mod/quiz', { 
-        state: { 
-            questions: questions, // Ensure this variable exists in ModLobby
-            competitionId: finalId,
-            round: currentRound 
-        } 
-    });
+    if (isSent) {
+        navigate('/mod/quiz', { 
+                state: { 
+                    questions: questions, // Ensure this variable exists in ModLobby
+                    competitionId: finalId,
+                    round: currentRound 
+                } 
+            });
+    } 
 };
 
     // Computed Checks

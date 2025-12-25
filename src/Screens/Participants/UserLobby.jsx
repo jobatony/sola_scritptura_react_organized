@@ -22,8 +22,10 @@ const UserLobby = () => {
 
   // 2. WEBSOCKET LISTENER (The Brain)
   useEffect(() => {
+
     if (!lastMessage) return;
 
+    console.log("📨 [User Received]:", lastMessage.type, lastMessage);
     // EVENT A: Moderator sends the questions (Step 1)
     if (lastMessage.type === 'game_questions_update') {
       console.log("Questions received:", lastMessage.payload);
@@ -37,7 +39,7 @@ const UserLobby = () => {
     }
 
     // EVENT B: Moderator triggers the actual start (Step 3 - The "GO" signal)
-    if (lastMessage.type === 'start_round') {
+    if (lastMessage.type === 'start_round_trigger') {
       console.log("Moderator started the round! Navigating...");
       
       // Grab questions from state or fallback to storage
@@ -46,7 +48,7 @@ const UserLobby = () => {
         : JSON.parse(localStorage.getItem('quiz_questions'));
 
       // ACTUAL NAVIGATION HAPPENS HERE
-      navigate('user/quiz', { state: { questions: questionsToPass } });
+      navigate('/user/quiz', { state: { questions: questionsToPass } });
     }
 
   }, [lastMessage]);

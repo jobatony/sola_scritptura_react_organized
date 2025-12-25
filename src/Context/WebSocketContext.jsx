@@ -55,8 +55,10 @@ export const WebSocketProvider = ({ children }) => {
     const sendMessage = (data) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
             socketRef.current.send(JSON.stringify(data));
+            return true
         } else {
             console.error("WebSocket is not open");
+            return false;
         }
     };
 
