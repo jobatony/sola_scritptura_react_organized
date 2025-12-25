@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle, Users } from 'lucide-react';
 import { useWebSocket } from '../../Context/WebSocketContext';
 import ScreenWrapper from '../../Components/Screenwrapper';
@@ -15,6 +15,7 @@ const ModLobby = ({ onNext }) => {
     const [readyCodes, setReadyCodes] = useState(new Set()); // New: Track who is ready
     const [questions, setQuestions] = useState([]);
     const { competitionId } = useParams();
+    const [currentRound, setCurrentRound] = useState(1);
     // 2. UI State
     const [mode, setMode] = useState('lobby'); // 'lobby' | 'generating'
     const [step, setStep] = useState(0); // 0=Spin, 1=Disperse, 2=ReadyMonitor
@@ -101,7 +102,7 @@ const ModLobby = ({ onNext }) => {
                             'Authorization': `Token ${token}`,
                  },
                 
-                body: JSON.stringify({ competition_id: compId })
+                body: JSON.stringify({ competition_id: finalId })
             });
             
             if (response.ok) {
@@ -117,7 +118,7 @@ const ModLobby = ({ onNext }) => {
                 // 👇 ADD THIS LINE to save the questions
                 setQuestions(data.questions); 
                 
-                alert("Questions distributed successfully!");
+                // alert("Questions distributed successfully!");
 
                 setCurrentRound(data.round); 
 
@@ -135,6 +136,8 @@ const ModLobby = ({ onNext }) => {
     // In ModLobby.jsx
 
 const handleStartGame = () => {
+
+    const finalId = competitionId || localStorage.getItem('current_competition_id');
     // 1. Send the WebSocket Signal (Triggers Users)
     sendMessage({
         type: 'start_round', // <--- CRITICAL: Must match UserLobby
@@ -159,7 +162,7 @@ const handleStartGame = () => {
     const readyCount = readyCodes.size;
     const totalCount = allParticipants.length;
     // For testing, you might want allowStart if readyCount > 0, strict mode requires readyCount === totalCount
-    const canStart = totalCount > 0 && readyCount === totalCount; 
+    const canStart = readyCount > 0; 
 
 
     // --- D. RENDER: GENERATING / MONITORING MODE ---
@@ -292,7 +295,7 @@ const handleStartGame = () => {
                     onClick={handleDistribute} 
                     className="w-full" 
                     style={{ padding: '16px' }}
-                    disabled={!allJoined} // Wait for connections
+                    disabled={onlineCodes.size === 0} // Wait for connections
                 >
                     {allJoined ? "Distribute Questions" : "Waiting for All Players..."}
                 </Button>
