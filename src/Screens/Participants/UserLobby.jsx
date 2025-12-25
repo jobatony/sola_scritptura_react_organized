@@ -1,3 +1,5 @@
+// jobatony/sola_scritptura_react_organized/src/Screens/Participants/UserLobby.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { Users, CheckCircle } from 'lucide-react';
@@ -8,69 +10,65 @@ import Header from '../../Components/Header';
 import Button from '../../Components/Button';
 
 const UserLobby = () => {
-  const [internalStage, setInternalStage] = useState('waiting'); // 'waiting' | 'get_questions' | 'ready' | 'locked_in'
+  const [internalStage, setInternalStage] = useState('waiting'); 
   const [gameData, setGameData] = useState(null);
   
   const navigate = useNavigate();
-  const { connect, isConnected, lastMessage, sendMessage } = useWebSocket(); // Ensure sendMessage is exposed from your Context
+  const { connect, isConnected, lastMessage, sendMessage } = useWebSocket();
 
   // 1. Connect on Mount
   useEffect(() => {
     const compId = localStorage.getItem('current_competition_id');
     if (compId) connect(compId, 'participant');
+    
+    // Attempt to load existing game data on mount (in case of refresh)
+    const savedData = localStorage.getItem('quiz_game_data');
+    if (savedData) {
+        setGameData(JSON.parse(savedData));
+    }
   }, []);
 
-  // 2. WEBSOCKET LISTENER (The Brain)
+  // 2. WEBSOCKET LISTENER
   useEffect(() => {
-
     if (!lastMessage) return;
 
     console.log("📨 [User Received]:", lastMessage.type, lastMessage);
-    // EVENT A: Moderator sends the questions (Step 1)
+
+    // EVENT A: Moderator sends the questions
     if (lastMessage.type === 'game_questions_update') {
       console.log("Questions received:", lastMessage.payload);
-      
-      // Save data immediately
       setGameData(lastMessage.payload);
       localStorage.setItem('quiz_game_data', JSON.stringify(lastMessage.payload));
-      
-      // Update UI to let user "Get" them
       setInternalStage('get_questions');
     }
 
-    // EVENT B: Moderator triggers the actual start (Step 3 - The "GO" signal)
+    // EVENT B: Moderator triggers the start
     if (lastMessage.type === 'start_round_trigger') {
-      console.log("Moderator started the round!");
+      console.log("Moderator started the round! Navigating...");
       
-      // Retrieve data from state or storage
       const dataToPass = gameData || JSON.parse(localStorage.getItem('quiz_game_data'));
 
       if (dataToPass && dataToPass.questions) {
-          // PASS BOTH ROUND AND QUESTIONS
           navigate('/user/quiz', { 
               state: { 
                   questions: dataToPass.questions, 
                   round: dataToPass.round 
               } 
           });
+      } else {
+          console.error("Cannot start round: Missing Question Data");
       }
-    }}, [lastMessage]);
+    }
+  }, [lastMessage, gameData, navigate]);
 
   // 3. HANDLER: User clicks "I'm Ready"
   const handleUserReady = () => {
-    // A. Send signal to Moderator
-    sendMessage({
-        type: 'player_ready',
-        status: true
-    });
-
-    // B. Lock the UI so they know they are waiting
+    sendMessage({ type: 'player_ready', status: true });
     setInternalStage('locked_in');
   };
 
   // --- UI RENDER ---
 
-  // STAGE 4: LOCKED IN (Waiting for Mod to press Start)
   if (internalStage === 'locked_in') {
     return (
       <ScreenWrapper style={{ backgroundColor: '#312e81', color: 'white' }}>
@@ -82,17 +80,12 @@ const UserLobby = () => {
           <p style={{ color: '#c7d2fe', fontSize: '1.2rem', marginBottom: '48px' }}>
             Waiting for the host to start the game...
           </p>
-          <div className="spin" style={{ 
-              width: '24px', height: '24px', 
-              border: '3px solid white', borderTopColor: 'transparent', 
-              borderRadius: '50%', margin: '0 auto' 
-          }}></div>
+          <div className="spin" style={{ width: '24px', height: '24px', border: '3px solid white', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto' }}></div>
         </div>
       </ScreenWrapper>
     );
   }
 
-  // STAGE 3: READY (User has reviewed, needs to confirm readiness)
   if (internalStage === 'ready') {
     return (
       <ScreenWrapper style={{ backgroundColor: '#312e81', color: 'white' }}>
@@ -104,11 +97,7 @@ const UserLobby = () => {
           <p style={{ color: '#c7d2fe', fontSize: '1.2rem', marginBottom: '48px' }}>
             Click below when you are ready to begin.
           </p>
-          <Button 
-            variant="outline" 
-            onClick={handleUserReady} // <--- Triggers WebSocket message, NOT navigation
-            style={{ borderColor: '#fff', color: '#fff', padding: '20px 40px' }}
-          >
+          <Button variant="outline" onClick={handleUserReady} style={{ borderColor: '#fff', color: '#fff', padding: '20px 40px' }}>
             I'm Ready
           </Button>
         </div>
@@ -116,18 +105,13 @@ const UserLobby = () => {
     );
   }
 
-  // STAGE 2: GET QUESTIONS (Transition)
   if (internalStage === 'get_questions') {
     return (
       <ScreenWrapper>
         <Card className="text-center">
           <Header title="Round One" subtitle="Prepare yourself" />
           <div style={{ padding: '40px 0' }}>
-            <Button 
-              onClick={() => setInternalStage('ready')} 
-              className="w-full"
-              style={{ padding: '24px', fontSize: '1.2rem' }}
-            >
+            <Button onClick={() => setInternalStage('ready')} className="w-full" style={{ padding: '24px', fontSize: '1.2rem' }}>
               Get Questions
             </Button>
           </div>
@@ -136,7 +120,6 @@ const UserLobby = () => {
     );
   }
 
-  // STAGE 1: WAITING
   return (
     <ScreenWrapper>
       <Card className="text-center">

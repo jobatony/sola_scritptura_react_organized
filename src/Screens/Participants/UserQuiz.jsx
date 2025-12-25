@@ -44,45 +44,48 @@ const UserQuiz = () => {
 
         // Cleanup interval on unmount or when moving to next question
         return () => clearInterval(timerRef.current);
-    }, [currentIndex, currentQuestion]); // Re-run only when index changes
+    }, [currentIndex, currentQuestion]);
 
     // --- B. MONITOR TIME UP ---
-    // This separate effect handles the "Time Up" logic safely
+    // Trigger ONLY when time hits 0
     useEffect(() => {
-        if (timeLeft === 0 && !isAnswered) {
+        if (timeLeft === 0) {
             handleTimeUp();
         }
-    }, [timeLeft, isAnswered]);
+    }, [timeLeft]);
 
     // --- C. HANDLERS ---
     const handleTimeUp = () => {
         clearInterval(timerRef.current);
-        // Only record if we haven't already answered
+        
+        // If the user hasn't answered yet, record a timeout
         if (!isAnswered) {
-            recordAnswer(null, 10); // Null answer implies timeout
-            moveToNext();
+            recordAnswer(null, 10); 
         }
+        
+        // Move to next question or submit, ONLY here (when time is up)
+        moveToNext();
     };
 
     const handleOptionClick = (option) => {
         if (isAnswered) return; // Prevent double clicking
         
         setIsAnswered(true); // Lock the answer immediately
-        clearInterval(timerRef.current); // Stop timer
         
+        // Record answer but DO NOT move next yet
         const timeTaken = 10 - timeLeft; 
         recordAnswer(option, timeTaken);
-        
-        // Short delay for UX, then move
-        setTimeout(moveToNext, 500); 
     };
 
     const recordAnswer = (answer, time) => {
-        answersRef.current.push({
-            question_id: currentQuestion.id,
-            selected_answer: answer, 
-            time_taken: time
-        });
+        const existing = answersRef.current.find(a => a.question_id === currentQuestion.id);
+        if (!existing) {
+            answersRef.current.push({
+                question_id: currentQuestion.id,
+                selected_answer: answer, 
+                time_taken: time
+            });
+        }
     };
 
     const moveToNext = () => {
@@ -112,13 +115,13 @@ const UserQuiz = () => {
                 },
                 body: JSON.stringify(payload)
             });
-            navigate('/user/waiting-results'); 
+            navigate('/user/waiting_results'); 
         } catch (error) {
             console.error("Submission failed", error);
         }
     };
 
-    // Prevent crashing if questions are empty or loading
+    // Loading State
     if (!currentQuestion) {
         return (
             <ScreenWrapper>
@@ -156,7 +159,6 @@ const UserQuiz = () => {
                             style={{ 
                                 width: '100%', 
                                 padding: '15px',
-                                // Ensure text is visible (black) and background changes on answer
                                 color: isAnswered ? '#666' : 'black', 
                                 borderColor: '#ccc',
                                 backgroundColor: isAnswered ? '#e5e7eb' : 'white',
